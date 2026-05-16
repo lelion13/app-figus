@@ -13,6 +13,8 @@ export default defineConfig({
         "icons/icon-512.png",
         "icons/icon-512-maskable.png",
         "icons/apple-touch-icon.png",
+        "icons/team-fwc.svg",
+        "icons/team-coca.svg",
       ],
       manifest: {
         id: "/",

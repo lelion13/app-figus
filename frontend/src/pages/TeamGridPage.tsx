@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import ProgressBar from "../components/ProgressBar";
+import TeamLabel from "../components/TeamLabel";
 import {
   api,
   type CatalogResponse,
@@ -78,7 +79,7 @@ export default function TeamGridPage() {
 
   if (loading) {
     return (
-      <Layout title={team} onBack={() => navigate("/equipos")}>
+      <Layout title={<TeamLabel team={team} />} onBack={() => navigate("/equipos")}>
         <p className="text-center text-slate-600">Cargando…</p>
       </Layout>
     );
@@ -86,14 +87,14 @@ export default function TeamGridPage() {
 
   if (error || !progress) {
     return (
-      <Layout title={team} onBack={() => navigate("/equipos")}>
+      <Layout title={<TeamLabel team={team} />} onBack={() => navigate("/equipos")}>
         <p className="text-center text-red-600">{error || "Sin datos"}</p>
       </Layout>
     );
   }
 
   return (
-    <Layout title={team} onBack={() => navigate("/equipos")}>
+    <Layout title={<TeamLabel team={team} />} onBack={() => navigate("/equipos")}>
       <div className="space-y-4">
         <ProgressBar progress={progress} />
         <div className="grid grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-2">

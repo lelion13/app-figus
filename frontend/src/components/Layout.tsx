@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useAuth } from "../hooks/useAuth";
 
 type Props = {
-  title: string;
+  title: ReactNode;
   children: ReactNode;
   onBack?: () => void;
 };
@@ -18,7 +18,7 @@ export default function Layout({ title, children, onBack }: Props) {
             <button
               type="button"
               onClick={onBack}
-              className="rounded-xl bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-slate-200"
+              className="shrink-0 rounded-xl bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-slate-200"
             >
               ← Volver
             </button>
@@ -26,12 +26,12 @@ export default function Layout({ title, children, onBack }: Props) {
             <button
               type="button"
               onClick={logout}
-              className="rounded-xl bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-slate-200"
+              className="shrink-0 rounded-xl bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-slate-200"
             >
               Salir
             </button>
           )}
-          <h1 className="flex-1 text-lg font-bold leading-tight">{title}</h1>
+          <h1 className="min-w-0 flex-1 text-lg font-bold leading-tight">{title}</h1>
         </div>
       </header>
       <main className="flex-1 px-4 py-4">{children}</main>

@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Layout from "../components/Layout";
+import InstallPrompt from "../components/InstallPrompt";
 import ProgressBar from "../components/ProgressBar";
+import TeamLabel from "../components/TeamLabel";
 import {
   api,
   type CatalogResponse,
   type Progress,
   type UserStickerState,
 } from "../services/api";
+import { filterTeamsByQuery } from "../utils/searchTeams";
 
 export default function TeamsPage() {
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
@@ -15,6 +18,7 @@ export default function TeamsPage() {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -52,6 +56,11 @@ export default function TeamsPage() {
     });
   }, [catalog, ownedMap]);
 
+  const filteredTeams = useMemo(() => {
+    if (!catalog) return [];
+    return filterTeamsByQuery(catalog, teamStats, search);
+  }, [catalog, teamStats, search]);
+
   if (loading) {
     return (
       <Layout title="Equipos">
@@ -72,21 +81,39 @@ export default function TeamsPage() {
     <Layout title="Equipos">
       <div className="space-y-4">
         <ProgressBar progress={progress} />
-        <ul className="space-y-3">
-          {teamStats.map((item) => (
-            <li key={item.team}>
-              <Link
-                to={`/equipos/${encodeURIComponent(item.team)}`}
-                className="flex min-h-[3.5rem] items-center justify-between rounded-2xl bg-white px-4 py-4 text-lg font-semibold shadow-sm ring-1 ring-slate-200 active:scale-[0.99]"
-              >
-                <span className="pr-2">{item.team}</span>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-700">
-                  {item.obtained}/{item.total}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <InstallPrompt />
+        <label className="block">
+          <span className="sr-only">Buscar país o figurita</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar país o figurita…"
+            autoComplete="off"
+            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base shadow-sm ring-slate-200 placeholder:text-slate-400 focus:border-green-600 focus:outline-none focus:ring-2 focus:ring-green-600/30"
+          />
+        </label>
+        {filteredTeams.length === 0 ? (
+          <p className="rounded-2xl bg-white px-4 py-6 text-center text-slate-600 shadow-sm ring-1 ring-slate-200">
+            No hay equipos que coincidan con tu búsqueda.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {filteredTeams.map((item) => (
+              <li key={item.team}>
+                <Link
+                  to={`/equipos/${encodeURIComponent(item.team)}`}
+                  className="flex min-h-[3.5rem] items-center justify-between rounded-2xl bg-white px-4 py-4 text-lg font-semibold shadow-sm ring-1 ring-slate-200 active:scale-[0.99]"
+                >
+                  <TeamLabel team={item.team} className="min-w-0 flex-1 pr-2" />
+                  <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-700">
+                    {item.obtained}/{item.total}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </Layout>
   );

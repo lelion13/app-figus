@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
+import { PwaInstallProvider } from "./hooks/PwaInstallContext";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import TeamGridPage from "./pages/TeamGridPage";
@@ -14,6 +15,7 @@ function PrivateRoute({ children }: { children: JSX.Element }) {
 export default function App() {
   return (
     <AuthProvider>
+      <PwaInstallProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/registro" element={<RegisterPage />} />
@@ -35,6 +37,7 @@ export default function App() {
         />
         <Route path="*" element={<Navigate to="/equipos" replace />} />
       </Routes>
+      </PwaInstallProvider>
     </AuthProvider>
   );
 }

@@ -1,114 +1,73 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { usePwaInstall } from "../hooks/PwaInstallContext";
+import { dismissBannerForAWhile, isBannerDismissed, isInAppBrowser } from "../utils/pwaInstall";
+import InstallHelpModal from "./InstallHelpModal";
 
-const DISMISS_KEY = "figus-install-dismissed";
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
-
-function isStandalone(): boolean {
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true
-  );
-}
-
-function isIos(): boolean {
-  return (
-    /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-  );
-}
-
-/** Banner opcional para instalar como app. No afecta el uso normal en el navegador. */
+/** Cartel inicial (se puede ocultar 7 días). La ayuda sigue en el botón Instalar. */
 export default function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
-  const [dismissed, setDismissed] = useState(
-    () => localStorage.getItem(DISMISS_KEY) === "1",
-  );
-  const [showIosHint, setShowIosHint] = useState(false);
+  const { platform, showInstallHelp, canNativeInstall } = usePwaInstall();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [hidden, setHidden] = useState(() => isBannerDismissed());
 
-  useEffect(() => {
-    if (!import.meta.env.PROD || isStandalone() || dismissed) return;
-
-    if (isIos()) {
-      setShowIosHint(true);
-      return;
-    }
-
-    const handler = (event: Event) => {
-      event.preventDefault();
-      setDeferredPrompt(event as BeforeInstallPromptEvent);
-    };
-
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, [dismissed]);
-
-  function dismiss() {
-    localStorage.setItem(DISMISS_KEY, "1");
-    setDismissed(true);
-    setShowIosHint(false);
-    setDeferredPrompt(null);
+  if (!import.meta.env.PROD || !showInstallHelp || hidden) {
+    return null;
   }
 
-  async function installAndroid() {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    setDeferredPrompt(null);
-    dismiss();
-  }
-
-  if (dismissed || isStandalone()) return null;
-
-  if (deferredPrompt) {
+  if (isInAppBrowser()) {
     return (
-      <aside className="rounded-2xl border border-green-200 bg-green-50 p-4 shadow-sm">
-        <p className="mb-3 text-sm text-green-900">
-          Podés usar Figus en el navegador o instalarlo en la pantalla de inicio
-          para abrirlo como app.
-        </p>
-        <div className="flex gap-2">
+      <>
+        <aside className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          <p className="font-semibold">Abrí en el navegador</p>
+          <p className="mt-1">
+            Para instalar Figus, abrí figus.lionapp.cloud en Chrome (Android) o Safari
+            (iPhone), no desde Instagram o WhatsApp.
+          </p>
           <button
             type="button"
-            onClick={installAndroid}
+            onClick={() => setModalOpen(true)}
+            className="mt-3 w-full rounded-xl bg-amber-600 py-3 font-semibold text-white"
+          >
+            Ver cómo instalar
+          </button>
+        </aside>
+        <InstallHelpModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      </>
+    );
+  }
+
+  function dismiss() {
+    dismissBannerForAWhile();
+    setHidden(true);
+  }
+
+  return (
+    <>
+      <aside className="rounded-2xl border border-green-200 bg-green-50 p-4 shadow-sm">
+        <p className="mb-3 text-sm text-green-900">
+          {platform === "ios-safari"
+            ? "Podés agregar Figus a tu pantalla de inicio (como una app)."
+            : canNativeInstall
+              ? "Podés instalar Figus en tu celular con un toque."
+              : "Podés instalar Figus desde el menú del navegador."}
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
             className="flex-1 rounded-xl bg-green-600 py-3 text-sm font-bold text-white"
           >
-            Instalar en el celular
+            Cómo instalar
           </button>
           <button
             type="button"
             onClick={dismiss}
             className="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-600 ring-1 ring-slate-200"
           >
-            Seguir en el navegador
+            Ahora no
           </button>
         </div>
       </aside>
-    );
-  }
-
-  if (showIosHint) {
-    return (
-      <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-200">
-        <p className="mb-1 text-sm font-medium text-slate-800">¿Querés instalarla?</p>
-        <p className="mb-3 text-sm text-slate-600">
-          También podés usarla en Safari sin instalar. Para agregarla al inicio:
-          Compartir → Agregar a pantalla de inicio.
-        </p>
-        <button
-          type="button"
-          onClick={dismiss}
-          className="w-full rounded-xl bg-slate-100 py-3 text-sm font-semibold text-slate-700"
-        >
-          Entendido
-        </button>
-      </aside>
-    );
-  }
-
-  return null;
+      <InstallHelpModal open={modalOpen} onClose={() => setModalOpen(false)} />
+    </>
+  );
 }

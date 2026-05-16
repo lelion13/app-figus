@@ -21,6 +21,7 @@ function isIos(): boolean {
   );
 }
 
+/** Banner opcional para instalar como app. No afecta el uso normal en el navegador. */
 export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
@@ -30,7 +31,7 @@ export default function InstallPrompt() {
   const [showIosHint, setShowIosHint] = useState(false);
 
   useEffect(() => {
-    if (isStandalone() || dismissed) return;
+    if (!import.meta.env.PROD || isStandalone() || dismissed) return;
 
     if (isIos()) {
       setShowIosHint(true);
@@ -67,7 +68,8 @@ export default function InstallPrompt() {
     return (
       <aside className="rounded-2xl border border-green-200 bg-green-50 p-4 shadow-sm">
         <p className="mb-3 text-sm text-green-900">
-          Instalá Figus 2026 en tu celular para acceder más rápido desde la pantalla de inicio.
+          Podés usar Figus en el navegador o instalarlo en la pantalla de inicio
+          para abrirlo como app.
         </p>
         <div className="flex gap-2">
           <button
@@ -75,14 +77,14 @@ export default function InstallPrompt() {
             onClick={installAndroid}
             className="flex-1 rounded-xl bg-green-600 py-3 text-sm font-bold text-white"
           >
-            Instalar app
+            Instalar en el celular
           </button>
           <button
             type="button"
             onClick={dismiss}
             className="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-600 ring-1 ring-slate-200"
           >
-            Ahora no
+            Seguir en el navegador
           </button>
         </div>
       </aside>
@@ -92,10 +94,10 @@ export default function InstallPrompt() {
   if (showIosHint) {
     return (
       <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-200">
-        <p className="mb-3 text-sm text-slate-700">
-          En iPhone/iPad: tocá <strong>Compartir</strong>{" "}
-          <span aria-hidden>(□↑)</span> y elegí{" "}
-          <strong>Agregar a pantalla de inicio</strong>.
+        <p className="mb-1 text-sm font-medium text-slate-800">¿Querés instalarla?</p>
+        <p className="mb-3 text-sm text-slate-600">
+          También podés usarla en Safari sin instalar. Para agregarla al inicio:
+          Compartir → Agregar a pantalla de inicio.
         </p>
         <button
           type="button"

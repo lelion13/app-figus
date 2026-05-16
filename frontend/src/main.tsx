@@ -5,7 +5,15 @@ import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 import "./index.css";
 
-registerSW({ immediate: true });
+// PWA opcional: solo en producción, sin bloquear el uso normal del navegador.
+if (import.meta.env.PROD) {
+  registerSW({
+    immediate: false,
+    onRegisterError(error) {
+      console.error("SW registration failed:", error);
+    },
+  });
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

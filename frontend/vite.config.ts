@@ -50,23 +50,14 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/api\//],
-        runtimeCaching: [
-          {
-            urlPattern: /\/api\/stickers$/,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "figus-catalog",
-              expiration: { maxEntries: 1, maxAgeSeconds: 60 * 60 * 24 * 7 },
-            },
-          },
-        ],
+        navigateFallbackDenylist: [/^\/api/],
+        // No cachear API en el SW del frontend: el navegador llama /api vía red normal.
+        runtimeCaching: [],
       },
       devOptions: {
-        enabled: true,
-        type: "module",
+        enabled: false,
       },
     }),
   ],

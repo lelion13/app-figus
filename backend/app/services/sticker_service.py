@@ -7,6 +7,8 @@ from app.models.sticker import Sticker
 from app.models.user_sticker import UserSticker
 from app.schemas.sticker import (
     CatalogResponse,
+    MissingStickersResponse,
+    MissingTeamGroup,
     ProgressResponse,
     StickerItem,
     TeamGroup,
@@ -57,6 +59,35 @@ def get_progress(db: Session, user_id: int) -> ProgressResponse:
     return ProgressResponse(
         total=total, obtained=obtained, missing=missing, percent=percent
     )
+
+
+def get_missing(db: Session, user_id: int) -> MissingStickersResponse:
+    stickers = db.scalars(
+        select(Sticker)
+        .outerjoin(
+            UserSticker,
+            (UserSticker.sticker_id == Sticker.id)
+            & (UserSticker.user_id == user_id),
+        )
+        .where((UserSticker.id.is_(None)) | (UserSticker.owned.is_(False)))
+        .order_by(Sticker.id)
+    ).all()
+
+    teams: OrderedDict[str, list[tuple[str, int]]] = OrderedDict()
+    for sticker in stickers:
+        if sticker.team not in teams:
+            teams[sticker.team] = []
+        teams[sticker.team].append((sticker.code, sticker.number))
+
+    groups: list[MissingTeamGroup] = []
+    total = 0
+    for team, items in teams.items():
+        items.sort(key=lambda pair: pair[1])
+        codes = [code for code, _ in items]
+        total += len(codes)
+        groups.append(MissingTeamGroup(team=team, codes=codes))
+
+    return MissingStickersResponse(total_missing=total, teams=groups)
 
 
 def set_sticker_owned(

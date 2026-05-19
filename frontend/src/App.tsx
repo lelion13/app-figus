@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { PwaInstallProvider } from "./hooks/PwaInstallContext";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import MissingPage from "./pages/MissingPage";
 import TeamGridPage from "./pages/TeamGridPage";
 import TeamsPage from "./pages/TeamsPage";
 
@@ -32,6 +33,14 @@ export default function App() {
           element={
             <PrivateRoute>
               <TeamGridPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/faltan"
+          element={
+            <PrivateRoute>
+              <MissingPage />
             </PrivateRoute>
           }
         />

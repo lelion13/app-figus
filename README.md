@@ -1,111 +1,83 @@
 # Figus 2026
 
-Álbum de figuritas Mundial 2026 — app fullstack mobile-first con PWA.
+Álbum de figuritas Mundial 2026 — app fullstack mobile-first con PWA opcional.
 
-**Especificación completa:** [docs/FIGUS.md](docs/FIGUS.md)
+**Producción:** https://figus.lionapp.cloud
+
+---
+
+## Documentación
+
+| Documento | Para qué |
+|-----------|----------|
+| **[docs/FIGUS.md](docs/FIGUS.md)** | Especificación, decisiones, API, modelo de datos |
+| **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** | Desarrollo: estructura, comandos, cómo agregar features |
+| **[docs/RUNBOOK.md](docs/RUNBOOK.md)** | Deploy VPS, PWA (Android/iOS/Windows), nginx, problemas frecuentes |
+
+> Antes de cambiar código o producto, leé/actualizá el doc que corresponda.
+
+---
 
 ## Stack
 
-- **Frontend:** React, Tailwind, Vite, PWA
+- **Frontend:** React, Tailwind, Vite, PWA (vite-plugin-pwa)
 - **Backend:** FastAPI, SQLAlchemy, Alembic, JWT, bcrypt
 - **DB:** PostgreSQL
-- **Deploy:** Docker + Traefik en VPS Hostinger
+- **Deploy:** Docker + Traefik (VPS Hostinger) · GHCR `lelion13`
 
-## Desarrollo local
+---
 
-### Con Docker (recomendado)
+## Quick start
 
 ```bash
 cp .env.example .env
-# Editar JWT_SECRET en .env
+# Editar JWT_SECRET
 
 docker compose up --build
 ```
 
 | Servicio | URL |
 |----------|-----|
-| Frontend | http://localhost:5173 |
+| App | http://localhost:5173 |
 | API | http://localhost:8000 |
-| API docs | http://localhost:8000/docs |
+| Docs API | http://localhost:8000/docs |
 
-### Sin Docker
+Sin Docker: ver [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-**Backend:**
-
-```bash
-cd backend
-pip install -r requirements.txt
-# Postgres corriendo + DATABASE_URL en .env
-alembic upgrade head
-uvicorn app.main:app --reload --port 8000
-```
-
-**Frontend:**
-
-```bash
-cd frontend
-npm install
-# Crear frontend/.env con VITE_API_URL=http://localhost:8000
-npm run dev
-```
+---
 
 ## Tests
 
 ```bash
 cd backend
 pip install -r requirements.txt
-pytest
+python -m pytest
 ```
 
-## Build imágenes Docker
+---
 
-```bash
-docker build -f backend/Dockerfile -t ghcr.io/lelion13/figus-backend:latest .
-docker build -f frontend/Dockerfile --build-arg VITE_API_URL= -t ghcr.io/lelion13/figus-frontend:latest .
-```
+## Deploy
 
-## Deploy en VPS (Hostinger)
+Imágenes: `ghcr.io/lelion13/figus-frontend`, `ghcr.io/lelion13/figus-backend`  
+CI: push a `main` → `.github/workflows/docker-publish.yml`
 
-1. Crear directorio `/docker/app-figus/` en el VPS.
-2. Copiar `docker-compose.prod.yml` y `.env` (secretos nuevos).
-3. DNS: `figus.lionapp.cloud` → IP del VPS (`177.7.37.78`).
-4. Variables mínimas en `.env`:
+Pasos en VPS: [docs/RUNBOOK.md](docs/RUNBOOK.md)
 
-```env
-POSTGRES_DB=figus
-POSTGRES_USER=figus
-POSTGRES_PASSWORD=<secreto>
-DATABASE_URL=postgresql+psycopg://figus:<secreto>@db:5432/figus
-JWT_SECRET=<secreto-largo>
-JWT_EXPIRE_MINUTES=10080
-CORS_ORIGINS=https://figus.lionapp.cloud
-IMAGE_TAG=latest
-```
+---
 
-5. Publicar imágenes (push a `main` dispara GitHub Actions) o build manual en el VPS.
-6. Desplegar:
+## Estado del proyecto
 
-```bash
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
-```
-
-Traefik en el VPS usa `network_mode: host` (proyecto `traefik-wpez`). **No** hace falta red Docker externa; los labels en `docker-compose.prod.yml` alcanzan.
-
-## GHCR
-
-- `ghcr.io/lelion13/figus-backend`
-- `ghcr.io/lelion13/figus-frontend`
-
-Workflow: `.github/workflows/docker-publish.yml` (push a `main`).
-
-## Estado
-
-| Fase | Estado |
+| Área | Estado |
 |------|--------|
+| Auth, catálogo, progreso, toggle | ✅ |
+| Búsqueda en equipos | ✅ |
+| Banderas (flagcdn + SVG especiales) | ✅ |
+| PWA opcional + guía instalación | ✅ |
+| Docker / GHCR / Traefik | ✅ |
 | Documentación | ✅ |
-| Backend | ✅ |
-| Frontend | ✅ |
-| PWA | ✅ |
-| Docker / GHCR | ✅ |
-| Deploy VPS | Manual (ver arriba) |
+
+---
+
+## Datos
+
+Catálogo desde `data/excel-control-album-panini-mundial-2026.xlsx` — no hardcodear figuritas.

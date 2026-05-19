@@ -33,6 +33,16 @@ export type Progress = {
   percent: number;
 };
 
+export type MissingTeamGroup = {
+  team: string;
+  codes: string[];
+};
+
+export type MissingStickersResponse = {
+  total_missing: number;
+  teams: MissingTeamGroup[];
+};
+
 const TOKEN_KEY = "figus_token";
 
 export function getToken(): string | null {
@@ -86,6 +96,7 @@ export const api = {
   getMyStickers: () =>
     request<{ items: UserStickerState[] }>("/api/me/stickers"),
   getProgress: () => request<Progress>("/api/me/progress"),
+  getMissing: () => request<MissingStickersResponse>("/api/me/missing"),
   toggleSticker: (stickerId: number) =>
     request<UserStickerState>(`/api/me/stickers/${stickerId}`, {
       method: "PATCH",

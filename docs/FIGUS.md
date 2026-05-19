@@ -3,10 +3,20 @@
 > **Documento maestro.** Fuente única de verdad para desarrollar e iterar la app.
 > Actualizar este archivo cuando cambien requisitos, decisiones o el plan.
 
-**Última actualización:** 2026-05-16  
+**Última actualización:** 2026-05-19  
+**Estado:** Implementado en producción (MVP + búsqueda, banderas, PWA, listado Faltan)  
 **Workspace:** `app-figus`  
 **URL producción:** https://figus.lionapp.cloud  
 **Registro GHCR:** `ghcr.io/lelion13/`
+
+### Documentación del proyecto
+
+| Archivo | Uso |
+|---------|-----|
+| [FIGUS.md](FIGUS.md) | Spec y decisiones (este archivo) |
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Guía día a día: archivos, comandos, nuevas features |
+| [RUNBOOK.md](RUNBOOK.md) | Deploy VPS, PWA por plataforma, nginx, troubleshooting |
+| [../README.md](../README.md) | Quick start |
 
 ---
 
@@ -73,6 +83,12 @@ Aplicación **fullstack** para gestionar un álbum de figuritas tipo Mundial. Ca
 | 15 | Traefik VPS | Verificado vía Hostinger MCP — **sin red Docker externa** |
 | 16 | API en prod | Mismo dominio: `https://figus.lionapp.cloud/api/...` |
 | 17 | Grid figuritas | Columnas **automáticas** según ancho (responsive) |
+| 18 | Búsqueda `/equipos` | Por país o código/número de figurita, **en vivo** (sin botón buscar) |
+| 19 | Banderas | Imágenes PNG ([flagcdn.com](https://flagcdn.com)), no emojis (Edge/Windows) |
+| 20 | PWA | Uso normal en navegador; instalar **opcional**; botón **Instalar** siempre en header |
+| 21 | Faltan | Botón en `/equipos` → modal (pantalla o WhatsApp) → `/faltan` o `wa.me`; API `GET /api/me/missing` |
+
+**Cambio SDD:** [changes/add-faltan-listado/](changes/add-faltan-listado/) (proposal, spec, design, tasks).
 
 ---
 
@@ -276,6 +292,7 @@ Authorization: Bearer <access_token>
 | GET | `/api/stickers` | Catálogo completo agrupado por `team` |
 | GET | `/api/me/stickers` | Estado del usuario: `{ sticker_id, code, owned }[]` o mapa |
 | GET | `/api/me/progress` | `{ total, obtained, missing, percent }` |
+| GET | `/api/me/missing` | `{ total_missing, teams: [{ team, codes[] }] }` — solo equipos con faltantes |
 | PUT o PATCH | `/api/me/stickers/{sticker_id}` | Toggle o set `{ owned: bool }` |
 
 **GET /api/stickers** — ejemplo de forma:
@@ -348,26 +365,82 @@ Mostrar **código** en el botón (ej. `ARG1`), no solo el número.
 
 ### 7.5 Capa API frontend
 
-- `services/api.ts` — fetch con token desde `localStorage`.
-- Variable `VITE_API_URL` — en dev `http://localhost:8000`, en prod `/api` (mismo origen).
+- `services/api.ts` — fetch con token desde `localStorage` (`figus_token`).
+- Variable `VITE_API_URL` — en dev `http://localhost:8000`, en prod **vacío** (rutas `/api/...` mismo origen).
+
+### 7.6 Búsqueda (implementado)
+
+- Pantalla: `/equipos`, input debajo del progreso.
+- Filtra al escribir (sin botón).
+- Criterios: nombre de equipo (normalizado, sin tildes), código parcial (`ARG`, `MEX1`), número si solo dígitos.
+- Código: `frontend/src/utils/searchTeams.ts`.
+
+### 7.7 Banderas (implementado)
+
+- Componente: `TeamLabel.tsx` — bandera + nombre en línea, altura `1em`.
+- Países: PNG desde flagcdn (`frontend/src/utils/teamFlags.ts` → código ISO).
+- FWC / Coca Cola: `public/icons/team-fwc.svg`, `team-coca.svg`.
+- **No** usar emojis de bandera (no renderizan en Windows/Edge).
+
+### 7.8 Listado Faltan (implementado)
+
+- **Header `/equipos`:** orden Salir · **Faltan** · Instalar · título.
+- Si `missing === 0`: mensaje «¡Completaste el álbum!» (sin modal).
+- Si hay faltantes: modal → **Ver en pantalla** (`/faltan`) o **Compartir por WhatsApp**.
+- Pantalla `/faltan`: una línea por país con faltantes (`TeamLabel` + códigos); **Volver** a `/equipos`.
+- WhatsApp: título `*Me faltan estas figuritas (Figus 2026):*` + líneas `PAÍS: COD1, COD2…`.
+- Si mensaje ≥ ~3000 caracteres o falla `window.open`: copiar portapapeles + aviso.
+- Código: `MissingChoiceModal.tsx`, `MissingPage.tsx`, `utils/shareMissing.ts`, `GET /api/me/missing`.
 
 ---
 
 ## 8. PWA
 
-| Archivo | Propósito |
-|---------|-----------|
-| `manifest.webmanifest` | name, short_name, icons, display standalone, theme_color |
-| Service worker | Cache estático (JS/CSS/HTML/iconos) |
-| Offline parcial | Catálogo cacheado + último estado usuario en IndexedDB o cache API |
+**Principio:** la app debe funcionar **siempre en el navegador**. Instalar en pantalla de inicio es **opcional**.
 
-**Manifest:**
+### 8.1 Archivos y stack
+
+| Pieza | Ubicación |
+|-------|-----------|
+| Manifest | Generado en build → `/manifest.webmanifest` |
+| Service worker | `vite-plugin-pwa` + Workbox → `/sw.js` |
+| Registro SW | `frontend/src/main.tsx` — solo `import.meta.env.PROD` |
+| Contexto instalación | `hooks/PwaInstallContext.tsx` |
+| Modal guía | `components/InstallHelpModal.tsx` |
+| Cartel opcional | `components/InstallPrompt.tsx` |
+| Botón fijo | `components/Layout.tsx` → **Instalar** |
+
+### 8.2 Manifest
 
 - `short_name`: Figus 2026
 - `name`: Álbum Figuritas Mundial 2026
 - `display`: standalone
-- `start_url`: /
-- Íconos: placeholder 192 y 512 PNG
+- `start_url`: `/`, `scope`: `/`, `id`: `/`
+- Íconos: 192, 512, 512 maskable en `public/icons/`
+- Meta iOS en `index.html`: `apple-mobile-web-app-*`, `apple-touch-icon` 180px
+
+### 8.3 Comportamiento UX
+
+| Elemento | Comportamiento |
+|----------|----------------|
+| Botón **Instalar** (header) | Siempre visible si no está en modo standalone; abre modal con pasos |
+| Cartel verde en `/equipos` | Opcional; “Ahora no” lo oculta **7 días** (no para siempre) |
+| Android con prompt nativo | Botón **Instalar ahora** en el modal si `beforeinstallprompt` |
+| iOS | Solo Safari; pasos Compartir → Agregar a pantalla de inicio |
+| In-app (WhatsApp, IG) | Aviso: abrir en Chrome/Safari |
+
+Detalle operativo: [RUNBOOK.md § PWA](RUNBOOK.md#pwa-instalación-por-plataforma).
+
+### 8.4 Service worker
+
+- Precache de assets estáticos (JS, CSS, HTML, íconos).
+- **No** cachear rutas `/api/*` en el SW del frontend (API va por Traefik al backend).
+- `navigateFallback`: `index.html` para SPA; denylist `^/api`.
+
+### 8.5 Nginx (producción) — crítico
+
+Ver [RUNBOOK.md § Nginx](RUNBOOK.md#nginx-frontend--crítico).  
+**Incluir** `include /etc/nginx/mime.types;` — un bloque `types` parcial rompe JS en Android (descarga archivos).
 
 ---
 
@@ -434,8 +507,10 @@ labels:
 
 ### 10.4 Nginx frontend (producción)
 
-- Servir SPA con fallback `try_files $uri /index.html`.
-- Proxy opcional no necesario si API va por Traefik al backend en `/api`.
+- Archivo: `frontend/nginx.conf` (copiado en imagen Docker).
+- `include /etc/nginx/mime.types;` obligatorio.
+- SPA: `try_files $uri $uri/ /index.html`.
+- API no pasa por este nginx; Traefik enruta `/api` al backend.
 
 ---
 
@@ -445,7 +520,7 @@ labels:
 
 | Variable | Ejemplo | Descripción |
 |----------|---------|-------------|
-| `DATABASE_URL` | `postgresql+asyncpg://figus:xxx@db:5432/figus` | SQLAlchemy URL |
+| `DATABASE_URL` | `postgresql+psycopg://figus:xxx@db:5432/figus` | SQLAlchemy URL |
 | `JWT_SECRET` | (secreto largo) | Firma JWT |
 | `JWT_EXPIRE_MINUTES` | `10080` | 7 días |
 | `JWT_ALG` | `HS256` | |
@@ -475,34 +550,39 @@ app-figus/
 ├── data/
 │   └── excel-control-album-panini-mundial-2026.xlsx
 ├── docs/
-│   └── FIGUS.md                    ← este archivo
+│   ├── FIGUS.md                    # spec (este archivo)
+│   ├── DEVELOPMENT.md              # guía de desarrollo
+│   └── RUNBOOK.md                  # deploy y troubleshooting
 ├── backend/
 │   ├── app/
 │   │   ├── main.py
-│   │   ├── api/routers/
+│   │   ├── api/routers/            # auth, stickers
 │   │   ├── core/                   # config, security, deps
 │   │   ├── models/
 │   │   ├── schemas/
 │   │   ├── services/
-│   │   └── seed/                   # excel parser + startup seed
+│   │   └── seed/                   # excel_parser, seed_stickers
 │   ├── alembic/
 │   ├── tests/
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/
-│   │   ├── components/
-│   │   ├── hooks/
+│   │   ├── pages/                  # Login, Register, Teams, TeamGrid
+│   │   ├── components/             # Layout, TeamLabel, Install*, ProgressBar
+│   │   ├── hooks/                  # useAuth, PwaInstallContext
 │   │   ├── services/api.ts
-│   │   └── sw.ts                   # service worker
-│   ├── public/
+│   │   └── utils/                  # teamFlags, searchTeams, pwaInstall
+│   ├── public/icons/               # PWA + team-fwc/coca SVG
+│   ├── nginx.conf
+│   ├── vite.config.ts              # PWA plugin
 │   ├── Dockerfile
 │   └── package.json
-├── docker-compose.yml              # desarrollo local
-├── docker-compose.prod.yml         # VPS
+├── .github/workflows/docker-publish.yml
+├── docker-compose.yml
+├── docker-compose.prod.yml
 ├── .env.example
-└── README.md                       # quick start → enlaza a docs/FIGUS.md
+└── README.md
 ```
 
 ---
@@ -554,10 +634,10 @@ app-figus/
 
 - [x] **3.1** `manifest.webmanifest` + íconos placeholder
 - [x] **3.2** Service worker: precache assets
-- [x] **3.3** Cache catálogo GET `/api/stickers` para offline
-- [ ] **3.4** Probar instalación en Chrome Android / iOS Safari
+- [x] **3.3** SW precache assets; API sin cache en SW frontend
+- [x] **3.4** Instalación probada: Win11, Android Chrome, iOS Safari + guía en app
 
-**Criterio:** instalable + catálogo visible offline (estado usuario puede estar desactualizado offline).
+**Criterio:** navegador OK siempre; instalación opcional con botón Instalar + modal.
 
 ---
 
@@ -576,11 +656,11 @@ app-figus/
 
 ### Fase 5 — Deploy VPS (0.5 día)
 
-- [ ] **5.1** Crear `/docker/app-figus/` en VPS
-- [ ] **5.2** DNS `figus.lionapp.cloud` → IP VPS
-- [ ] **5.3** `.env` producción (secretos nuevos, no reutilizar de otras apps)
-- [ ] **5.4** `docker compose -f docker-compose.prod.yml pull && up -d`
-- [ ] **5.5** Verificar HTTPS y flujo E2E en celular
+- [x] **5.1** `/docker/app-figus/` en VPS
+- [x] **5.2** DNS `figus.lionapp.cloud`
+- [x] **5.3** `.env` producción
+- [x] **5.4** Compose prod + Traefik
+- [x] **5.5** E2E en producción (navegador + PWA)
 
 **Criterio:** criterios de éxito del §14 en producción.
 
@@ -606,31 +686,54 @@ flowchart LR
 
 Un usuario puede:
 
-1. [ ] Registrarse con nickname único, email y contraseña ≥6
-2. [ ] Iniciar sesión y recibir JWT (7 días)
-3. [ ] Ver todas las figuritas organizadas por equipo (orden Excel)
-4. [ ] Marcar / desmarcar figuritas con tap (verde/gris)
-5. [ ] Ver progreso total, obtenidas, faltantes y % actualizado al instante
-6. [ ] Instalar PWA en celular (“Figus 2026”)
-7. [ ] Usar en `https://figus.lionapp.cloud` con TLS
+1. [x] Registrarse con nickname único, email y contraseña ≥6
+2. [x] Iniciar sesión y recibir JWT (7 días)
+3. [x] Ver todas las figuritas organizadas por equipo (orden Excel)
+4. [x] Marcar / desmarcar figuritas con tap (verde/gris)
+5. [x] Ver progreso total, obtenidas, faltantes y % actualizado al instante
+6. [x] Buscar por país o código en `/equipos`
+7. [x] Ver banderas en móvil y escritorio (Edge)
+8. [x] Usar la app en el navegador sin instalar
+9. [x] Instalar PWA opcionalmente (botón Instalar + guía)
+10. [x] Usar en `https://figus.lionapp.cloud` con TLS
 
 ---
 
 ## 15. Notas para iterar
 
-Al cambiar algo, actualizar la sección correspondiente y marcar la fecha arriba.
+Al cambiar algo, actualizar la sección correspondiente, la fecha arriba, y si aplica [DEVELOPMENT.md](DEVELOPMENT.md) / [RUNBOOK.md](RUNBOOK.md).
 
 | Si cambias… | Actualiza también… |
 |-------------|-------------------|
-| Formato Excel / archivo | §4, parser, `data/`, seed tests |
-| Campos de API | §6, frontend `api.ts`, tests |
+| Formato Excel / archivo | §4, `seed/excel_parser.py`, `data/`, tests |
+| Campos de API | §6, `api.ts`, tests backend |
+| UI / búsqueda / banderas | §7, `searchTeams.ts`, `teamFlags.ts` |
+| PWA / nginx | §8, `vite.config.ts`, `nginx.conf`, RUNBOOK |
 | Decisiones de producto | §2, §3 |
 | Traefik / dominio | §10, `docker-compose.prod.yml` |
-| Nuevas fases | §13 |
+| Deploy / incidentes | RUNBOOK |
 
-**Próximo paso sugerido:** ejecutar **Fase 0 + Fase 1** (backend con seed y tests) — decir *"implementá Fase 1"* en el chat.
+### Catálogo 993 vs 980
 
-**Pregunta abierta (resolver al implementar seed):** discrepancia 993 códigos parseados vs TOTAL 980 en planilla. Comportamiento adoptado: importar todos los códigos únicos del Excel; progreso según DB. Si el product owner quiere exactamente 980, definir regla de exclusión (ej. omitir FWC19 y CC13–CC14) y actualizar §4.
+Comportamiento adoptado: importar **todos** los códigos únicos del Excel; progreso según `COUNT(stickers)`. Si se requiere exactamente 980, definir regla de exclusión en §4 y ajustar parser.
+
+### Ideas futuras (no implementadas)
+
+- Refresh token, recuperar contraseña, admin re-seed UI, flags offline locales, estadísticas por equipo compartibles.
+
+---
+
+## 16. Mapa rápido API ↔ pantallas
+
+| Pantalla | Ruta | Endpoints |
+|----------|------|-----------|
+| Login | `/login` | `POST /api/auth/login` |
+| Registro | `/registro` | `POST /api/auth/register` |
+| Equipos | `/equipos` | `GET /api/stickers`, `/api/me/stickers`, `/api/me/progress` |
+| Faltan | `/faltan` | `GET /api/me/missing` |
+| Grid | `/equipos/:team` | mismos + `PATCH /api/me/stickers/{id}` |
+
+Token: header `Authorization: Bearer <jwt>`, clave local `figus_token`.
 
 ---
 

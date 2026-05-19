@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import InstallPrompt from "../components/InstallPrompt";
+import MissingChoiceModal from "../components/MissingChoiceModal";
 import ProgressBar from "../components/ProgressBar";
 import TeamLabel from "../components/TeamLabel";
+import { shareMissingList } from "../utils/shareMissing";
 import {
   api,
   type CatalogResponse,
@@ -13,12 +15,17 @@ import {
 import { filterTeamsByQuery } from "../utils/searchTeams";
 
 export default function TeamsPage() {
+  const navigate = useNavigate();
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
   const [ownedMap, setOwnedMap] = useState<Record<number, boolean>>({});
   const [progress, setProgress] = useState<Progress | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [faltanOpen, setFaltanOpen] = useState(false);
+  const [faltanBusy, setFaltanBusy] = useState(false);
+  const [albumCompleteMsg, setAlbumCompleteMsg] = useState("");
+  const [shareNotice, setShareNotice] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -61,6 +68,40 @@ export default function TeamsPage() {
     return filterTeamsByQuery(catalog, teamStats, search);
   }, [catalog, teamStats, search]);
 
+  function handleFaltanTap() {
+    if (!progress) return;
+    setShareNotice("");
+    if (progress.missing === 0) {
+      setAlbumCompleteMsg("¡Completaste el álbum!");
+      return;
+    }
+    setAlbumCompleteMsg("");
+    setFaltanOpen(true);
+  }
+
+  async function handleShareWhatsApp() {
+    setFaltanBusy(true);
+    setShareNotice("");
+    try {
+      const missing = await api.getMissing();
+      const result = await shareMissingList(missing.teams);
+      setFaltanOpen(false);
+      if (result === "opened") {
+        setShareNotice("Se abrió WhatsApp con tu listado.");
+      } else {
+        setShareNotice(
+          "El mensaje es largo o no se pudo abrir WhatsApp. Se copió al portapapeles.",
+        );
+      }
+    } catch (err) {
+      setShareNotice(
+        err instanceof Error ? err.message : "No se pudo compartir el listado",
+      );
+    } finally {
+      setFaltanBusy(false);
+    }
+  }
+
   if (loading) {
     return (
       <Layout title="Equipos">
@@ -78,9 +119,19 @@ export default function TeamsPage() {
   }
 
   return (
-    <Layout title="Equipos">
+    <Layout title="Equipos" onFaltan={handleFaltanTap}>
       <div className="space-y-4">
         <ProgressBar progress={progress} />
+        {albumCompleteMsg && (
+          <p className="rounded-2xl bg-green-50 px-4 py-3 text-center font-semibold text-green-800 ring-1 ring-green-200">
+            {albumCompleteMsg}
+          </p>
+        )}
+        {shareNotice && (
+          <p className="rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm text-slate-700 ring-1 ring-slate-200">
+            {shareNotice}
+          </p>
+        )}
         <InstallPrompt />
         <label className="block">
           <span className="sr-only">Buscar país o figurita</span>
@@ -115,6 +166,16 @@ export default function TeamsPage() {
           </ul>
         )}
       </div>
+      <MissingChoiceModal
+        open={faltanOpen}
+        onClose={() => setFaltanOpen(false)}
+        onViewScreen={() => {
+          setFaltanOpen(false);
+          navigate("/faltan");
+        }}
+        onShareWhatsApp={handleShareWhatsApp}
+        busy={faltanBusy}
+      />
     </Layout>
   );
 }

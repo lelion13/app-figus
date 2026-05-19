@@ -6,6 +6,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.sticker import (
     CatalogResponse,
+    MissingStickersResponse,
     ProgressResponse,
     StickerUpdateRequest,
     UserStickerState,
@@ -38,6 +39,14 @@ def my_progress(
     user: User = Depends(get_current_user),
 ) -> ProgressResponse:
     return sticker_service.get_progress(db, user.id)
+
+
+@router.get("/me/missing", response_model=MissingStickersResponse)
+def my_missing(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> MissingStickersResponse:
+    return sticker_service.get_missing(db, user.id)
 
 
 @router.patch("/me/stickers/{sticker_id}", response_model=UserStickerState)

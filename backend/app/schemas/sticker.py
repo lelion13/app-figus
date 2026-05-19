@@ -35,3 +35,13 @@ class ProgressResponse(BaseModel):
 
 class StickerUpdateRequest(BaseModel):
     owned: bool | None = None
+
+
+class MissingTeamGroup(BaseModel):
+    team: str
+    codes: list[str]
+
+
+class MissingStickersResponse(BaseModel):
+    total_missing: int
+    teams: list[MissingTeamGroup]

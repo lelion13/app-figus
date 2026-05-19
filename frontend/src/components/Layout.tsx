@@ -7,9 +7,10 @@ type Props = {
   title: ReactNode;
   children: ReactNode;
   onBack?: () => void;
+  onFaltan?: () => void;
 };
 
-export default function Layout({ title, children, onBack }: Props) {
+export default function Layout({ title, children, onBack, onFaltan }: Props) {
   const { logout } = useAuth();
   const { showInstallHelp } = usePwaInstall();
   const [installOpen, setInstallOpen] = useState(false);
@@ -33,6 +34,16 @@ export default function Layout({ title, children, onBack }: Props) {
               className="shrink-0 rounded-xl bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-slate-200"
             >
               Salir
+            </button>
+          )}
+          {onFaltan && (
+            <button
+              type="button"
+              onClick={onFaltan}
+              className="shrink-0 rounded-xl bg-amber-500 px-3 py-2 text-sm font-semibold text-white shadow-sm"
+              title="Ver figuritas que faltan"
+            >
+              Faltan
             </button>
           )}
           {showInstallHelp && (

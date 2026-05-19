@@ -389,7 +389,7 @@ Mostrar **código** en el botón (ej. `ARG1`), no solo el número.
 - Si hay faltantes: modal → **Ver en pantalla** (`/faltan`) o **Compartir por WhatsApp**.
 - Pantalla `/faltan`: una línea por país con faltantes (`TeamLabel` + códigos); **Volver** a `/equipos`.
 - WhatsApp: título `*Me faltan estas figuritas (Figus 2026):*` + líneas `PAÍS: COD1, COD2…`.
-- Si mensaje ≥ ~3000 caracteres o falla `window.open`: copiar portapapeles + aviso.
+- Prioridad: **Web Share API** (menú del sistema → WhatsApp, sin límite de URL). Si el mensaje es corto: `wa.me`. Si es largo: compartir archivo `.txt`. Portapapeles solo como último recurso.
 - Código: `MissingChoiceModal.tsx`, `MissingPage.tsx`, `utils/shareMissing.ts`, `GET /api/me/missing`.
 
 ---

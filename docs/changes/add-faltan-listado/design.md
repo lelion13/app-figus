@@ -41,9 +41,9 @@ Layout
 ### `utils/shareMissing.ts`
 
 - `formatMissingMessage(teams)` → string
-- `shareMissingList(teams)` → intenta wa.me si len < 3000, sino clipboard; fallback si open falla
+- `shareMissingList(teams)` → Web Share API (texto) → wa.me si corto → Web Share (archivo `.txt`) → portapapeles
 
-Constante `WHATSAPP_TEXT_LIMIT = 3000`.
+Constante `WHATSAPP_URL_TEXT_LIMIT = 2000` (solo para enlaces `wa.me`).
 
 ## Sin cambios
 

@@ -85,12 +85,19 @@ export default function TeamsPage() {
     try {
       const missing = await api.getMissing();
       const result = await shareMissingList(missing.teams);
+      if (result === "cancelled") return;
       setFaltanOpen(false);
-      if (result === "opened") {
+      if (result === "shared") {
+        setShareNotice("Elegí WhatsApp en el menú para enviar tu listado.");
+      } else if (result === "whatsapp") {
         setShareNotice("Se abrió WhatsApp con tu listado.");
+      } else if (result === "file") {
+        setShareNotice(
+          "Elegí WhatsApp y enviá el archivo de texto con tu listado.",
+        );
       } else {
         setShareNotice(
-          "El mensaje es largo o no se pudo abrir WhatsApp. Se copió al portapapeles.",
+          "No se pudo abrir WhatsApp en este dispositivo. El listado se copió al portapapeles.",
         );
       }
     } catch (err) {
